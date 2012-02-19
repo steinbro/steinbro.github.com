@@ -1,19 +1,18 @@
+// based on Rob Hawkes's twitter-canvas-10k 
+// https://github.com/robhawkes/twitter-canvas-10k
+
 $(function() {
-	var twitter;
-	var twitterFriends;
+	var requester;
+	var blobs;
 	
-	var tweetWrapper = $('#tw');
+	var wrapper = $('#w');
 	var details = $('#d');	
-	var tweet = $('#t');
-	var avatar = $('#av');
+	var blob = $('#b');
 	var name = $('#n');
 	var meta = $('#me');
 	
 	var mask = $('#m');
 	var startWrapper = $('#sw');
-	var sortButtons = $('.so');
-	var userForm = $('#cu');
-	var userInput = $('#u');
 	
 	var canvas = $("#c");
 	var canvasHeight;
@@ -26,50 +25,50 @@ $(function() {
 	
 	var firstStart = true;
 	
-	var MAX_POINT_SIZE = 100;
-	var MIN_POINT_SIZE = 1;
+	// Brazil, by gabri_ferlin (http://kuler.adobe.com/#themeID/1703776)
+  var PALETTE = [[0x8F, 0xBF, 0x4D], [0xD9, 0x59, 0x29], [0x0D, 0x8C, 0x7F], [0xF2, 0xD1, 0x3E], [0x06,0x35, 0x59]];
 	
 	function init() {
-		twitter = new Twitter();
-		twitter.getFriends('statuses/friends.json?screen_name=robhawkes');
-	
+		requester = new Requester();
+		requester.getBlobs();
+		
+		addContactInfo();
+		
 		updateCanvasDimensions();
 		
 		boundary = new Boundary(0, 0, canvasWidth, canvasHeight);
-
+		
 		initEventListeners();
 		timeout();
 	};
 	
+	function addContactInfo() {
+		$('#s').append('<p><a href="mai' + 'lto:stei' + 'nbro@po' + 
+	                 'st.harvar' + 'd.edu' + '">stei' + 'nbro@pos' + 
+	                 't.harv' + 'ard.edu</a></p>');
+	}
+	
 	function initEventListeners() {
 		$(window).bind('resize', updateCanvasDimensions).bind('keyup', onKeyUp).bind('mousemove', onMove);
-		$(canvas).add('#tw').bind('click', onClick);
+		$(canvas).add('#w').bind('click', onClick);
+		$(canvas).add('#sw').bind('click', onClick);
 		
-		$(document).bind('onFriendsReceived', function(e) {
-			twitterFriends = e.response;
+		$(document).bind('onBlobsReceived', function(e) {
+			blobs = e.response;
 			
-			pointCollection = new PointCollection();		
-			for (var i = 0; i < twitterFriends.length; i++) {
-				if (twitterFriends[i].status) {
-					var point = pointCollection.newPoint(Math.random()*canvasWidth, Math.random()*canvasHeight);
-					point.data = twitterFriends[i];
-				};
+			pointCollection = new PointCollection();
+			ages = blobs.map(function(x) { return x.age; }).sort();
+			oldest = ages[0];
+			newest = ages.reverse()[0];
+			for (var i = 0; i < blobs.length; i++) {
+				var point = pointCollection.newPoint(Math.random()*canvasWidth, Math.random()*canvasHeight);
+				point.data = blobs[i];
+				point.originalSize = point.size = (point.data.age - oldest) / (newest - oldest) * 40 + 10;
+				palette = PALETTE[point.data.type]; //parseInt(Math.random()*PALETTE.length)]
+				point.colour = {r: palette[0], g: palette[1], b: palette[2]};//{r: parseInt(Math.random()*256), g: parseInt(Math.random()*256), b: parseInt(Math.random()*256)}; //{r: 0xDD, g: 0xC8, b: 0x37};
 			};
-							
-			userInput.val('');
-			changeSort(3);
-			sortButtons.removeClass('active');
-			$('.so3').addClass('active');
-		});
-		
-		userForm.bind('submit', changeUser);
-		userInput.add(name).bind('click', function(e) { e.stopPropagation(); });
-		
-		sortButtons.bind('click', function(e) {
-			e.stopPropagation();
-			sortButtons.removeClass('active');
-			$(this).addClass('active');
-			changeSort($(this).attr('class').match(/so([0-9]+)/i)[1]);
+			
+			mask.fadeOut(600);
 		});
 		
 		$('#o').click(function(e) {
@@ -90,13 +89,18 @@ $(function() {
 	
 	function onKeyUp(e) {
 		switch (e.keyCode) {
-			case 32:
-				hideTweetWrapper();
+			case 32: // space
+				hideWrapper();
 				if (startWrapper.is(':hidden')) {
 					startWrapper.fadeIn(500);
 				} else {
 					startWrapper.fadeOut(500);
 				}
+				break;
+			case 27: // escape
+				hideWrapper();
+				if(!(startWrapper.is(':hidden')))
+					startWrapper.fadeOut(500);
 				break;
 		};
 	};
@@ -109,109 +113,37 @@ $(function() {
 	function onClick(e) {
 		e.stopPropagation();
 		
+		if(!(startWrapper.is(':hidden')))
+			startWrapper.fadeOut(500);
+		
 		pointCollection.selectedPoint = null;
 		var point = pointCollection.selectPoint(e.pageX, e.pageY);
 		
 		if (point) {
-			point.colour = {r:150, g:150, b:150};
 			var data = point.data;
-			name.html('<a href="http://twitter.com/'+data.screen_name+'" target="_blank">'+data.name+' (@'+data.screen_name+')</a>');
-			var dateCreated = new Date(data.status.created_at);
-			var dateToday = new Date();
-			var daysDiff = Math.ceil((dateToday.getTime()-dateCreated.getTime())/(1000*60*60*24));
-			var suffix = (daysDiff > 1) ? 's' : '';
-			meta.html('Tweets: '+data.statuses_count+' &ndash; '+'Followers: '+data.followers_count+' &ndash; '+'Following: '+data.friends_count+' &ndash; Last tweet sent: '+daysDiff+' day'+suffix+' ago');
-			avatar.attr('src', data.profile_image_url);
-			tweet.html(data.status.text);
+			name.html('<a href="'+data.link+'">'+data.title+'</a>');
+			
+			var dateCreated = new Date(data.age);
+			dateParts = dateCreated.toDateString().split(" ");
+			meta.html(dateParts[1] + ' ' + dateParts[3]);
+			
+			blob.html(data.desc);
+			if(!data.desc) blob.html(null);
 			
 			details.css('marginTop', (canvasHeight/2)-(details.height()/2));
 			
-			tweetWrapper.css({visibility: 'visible', display: 'none'}).fadeIn(500);
+			wrapper.css({visibility: 'visible', display: 'none'}).fadeIn(500);
 		} else {
-			hideTweetWrapper();
+			hideWrapper();
 		};
 	};
 	
-	function hideTweetWrapper() {
-		tweetWrapper.fadeOut(500, function() {
+	function hideWrapper() {
+		wrapper.fadeOut(500, function() {
 			$(this).css({visibility: 'hidden', display: 'block'});
 		});
 	}
-	
-	function changeUser(e) {
-		e.preventDefault();
-
-		mask.fadeIn(600);
 		
-		twitter.getFriends('statuses/friends.json?screen_name='+userInput.val());
-	};
-	
-	function changeSort(method) {
-		if (!firstStart) {
-			startWrapper.fadeOut(500);
-		} else {
-			firstStart = false;
-		};
-			
-		mask.fadeIn(600, function() {
-			var size;
-			var maxValue = 0, ratio = 0;
-
-			for (var i = 0; i < pointCollection.points.length; i++) {
-				var point = pointCollection.points[i];
-				
-				if (point == null)
-					continue;
-					
-				var data = point.data;
-				
-				switch(parseInt(method)) {
-					case 1:
-						// Total followers
-						size = data.followers_count;
-						break;
-					case 2:
-						// Total following
-						size = data.friends_count;
-						break;
-					case 3:
-						// Total tweets
-						size = data.statuses_count;
-						break;
-					case 4:
-						// Age of account
-						var dateCreated = new Date(data.created_at);
-						var dateToday = new Date();
-						var dayInMilleseconds = 1000*60*60*24;
-						size = Math.ceil((dateToday.getTime()-dateCreated.getTime())/dayInMilleseconds);
-						break;
-					case 5:
-						// Amount of times in a list
-						size = data.listed_count;
-						break;
-				};
-				
-				point.originalSize = point.size = size;
-				maxValue = (size > maxValue) ? size : maxValue;
-			};
-			
-			ratio = (MAX_POINT_SIZE+MIN_POINT_SIZE) / maxValue;
-			
-			for (var i = 0; i < pointCollection.points.length; i++) {
-				var point = pointCollection.points[i];
-				
-				if (point == null)
-					continue;
-					
-				var data = point.data;
-			
-				point.originalSize = point.size = point.size*ratio + MIN_POINT_SIZE;
-			};
-			
-			mask.fadeOut(600);
-		});
-	};
-	
 	function timeout() {
 		draw();
 		update();
@@ -238,25 +170,23 @@ $(function() {
 			pointCollection.update();
 	};
 	
-	function Twitter() {
-		this.apiUrl = 'http://api.twitter.com/1/';
-		this.getFriends = function(query) {
-			query += '&include_entities=1&callback=?';
-			$.getJSON(this.apiUrl+query, function(response) { $.event.trigger({type: 'onFriendsReceived', response: response}) });
+	function Requester() {
+		this.getBlobs = function() {
+			$.getJSON("data.json", function(response) { $.event.trigger({type: 'onBlobsReceived', response: response}) });
 		};
 	};
 	
 	function Vector(x, y) {
 		this.x = x;
 		this.y = y;
- 
+		
 		this.addX = function(x) {
 			this.x += x;
 		};	
 		this.addY = function(y) {
 			this.y += y;
 		};
- 
+		
 		this.set = function(x, y) {
 			this.x = x; 
 			this.y = y;
@@ -268,31 +198,31 @@ $(function() {
 		this.right = w;
 		this.top = y;
 		this.bottom = h;
- 
+		
 		this.setBoundary = function(x, y, w, h) {
 			this.left = x;
 			this.right = w;
 			this.top = y;
 			this.bottom = h;
 		};
- 
+		
 		this.collision = function(object) {
 			var collide = false;
 			var collideX = false;
 			var collideY = false;
- 
+			
 			if(object.curPos.x < this.left-object.size) {
 				object.curPos.x = this.right+object.size; 
-
+				
 				collide = true;
 				collideX = true;
 			} else if(object.curPos.x > this.right+object.size) {
 				object.curPos.x = this.left-object.size;
-
+				
 				collide = true;
 				collideX = true;
 			};
- 
+			
 			if(object.curPos.y < this.top-object.size) {
 				object.curPos.y = this.bottom+object.size;
 				
@@ -300,11 +230,11 @@ $(function() {
 				collideY = true;
 			} else if(object.curPos.y > this.bottom+object.size) {
 				object.curPos.y = this.top-object.size;
-
+				
 				collide = true; 
 				collideY = true;
 			};
- 
+			
 			return {collide: collide, x: collideX, y: collideY}; 
 		};
 	};
@@ -362,13 +292,17 @@ $(function() {
 				var dd = (dx * dx) + (dy * dy);
 				var d = Math.sqrt(dd);
 				
-				if (d < 100 && point.originalSize < 10) {
+				if (d < 100 && point.originalSize < 20) {
 					var size = point.originalSize/(d/100);
-					point.size = (size < 10) ? size : 10;
+					point.size = (size < 20) ? size : 20;
 				} else {
 					point.size = point.originalSize;
+					point.opacity = point.originalOpacity;
 				};
-					
+				
+				if (d < 100)
+					point.opacity = point.originalOpacity/(d/100);
+				
 				point.update();
 			};
 		};
@@ -380,7 +314,7 @@ $(function() {
 				
 				if (point == null)
 					continue;
-
+				
 				point.draw();
 			};
 		};
@@ -389,6 +323,8 @@ $(function() {
 	function Point(x, y) {
 		this.acceleration = new Vector(0.0, 0.0);
 		this.colour = {r: 0, g: 0, b: 0};
+		this.originalOpacity = 0.7;
+		this.opacity = 0.7;
 		this.curPos = new Vector(x, y);
 		this.data = new Object();
 		this.force = new Vector(0.0, 0.0);
@@ -416,7 +352,7 @@ $(function() {
 		};
 		
 		this.draw = function() {
-			ctx.fillStyle = 'rgb('+this.colour.r+', '+this.colour.g+', '+this.colour.b+')';
+			ctx.fillStyle = 'rgba('+this.colour.r+', '+this.colour.g+', '+this.colour.b+', '+this.opacity+')';
 			ctx.beginPath();
 			ctx.arc(this.curPos.x, this.curPos.y, this.size, 0, Math.PI*2, true);
 			ctx.fill();
