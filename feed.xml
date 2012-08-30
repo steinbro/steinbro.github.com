@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom"> 
+	<title>Daniel W. Steinbrook</title>
+	<link href="http://steinbro.github.com/feed/" rel="self" />
+	<link href="http://steinbro.github.com/" />
+
+	<entry>
+		<title>Cerulean</title>
+		<link href="http://soundcloud.com/steinbro/cerulean" />
+		<updated>2012-07-09T00:00:00Z</updated>
+		<category term="0" />
+	</entry>
+
+	<entry>
+		<title>The Onomatosynthesizer</title>
+		<link href="https://www.github.com/steinbro/onomatosynthesizer/" />
+		<updated>2012-03-04T00:00:00Z</updated>
+		<category term="1" />
+	</entry>
+
+	<entry>
+		<title>Keshatic Fantasy</title>
+		<link href="http://soundcloud.com/steinbro/keshatic-fantasy" />
+		<updated>2012-01-14T00:00:00Z</updated>
+		<category term="0" />
+	</entry>
+
+	<entry>
+		<title>The Connotations of Klezmer</title>
+		<link href="http://dl.dropbox.com/u/5759645/steinbro.github.com/klezmer.pdf" />
+		<updated>2011-05-16T00:00:00Z</updated>
+		<category term="2" />
+	</entry>
+
+	<entry>
+		<title>Massively parallel poetry</title>
+		<link href="http://dl.dropbox.com/u/5759645/steinbro.github.com/1000monkeys.html" />
+		<updated>2011-05-14T00:00:00Z</updated>
+		<category term="1" />
+	</entry>
+
+	<entry>
+		<title>Affective social networking</title>
+		<link href="http://dl.dropbox.com/u/5759645/steinbro.github.com/bluesfeed-paper.pdf" />
+		<updated>2010-12-16T00:00:00Z</updated>
+		<category term="2" />
+	</entry>
+</feed>

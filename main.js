@@ -26,7 +26,7 @@ $(function() {
 	var firstStart = true;
 	
 	// Brazil, by gabri_ferlin (http://kuler.adobe.com/#themeID/1703776)
-  var PALETTE = [[0x8F, 0xBF, 0x4D], [0xD9, 0x59, 0x29], [0x0D, 0x8C, 0x7F], [0xF2, 0xD1, 0x3E], [0x06,0x35, 0x59]];
+	var PALETTE = [[0x8F, 0xBF, 0x4D], [0xD9, 0x59, 0x29], [0x0D, 0x8C, 0x7F], [0xF2, 0xD1, 0x3E], [0x06,0x35, 0x59]];
 	
 	function init() {
 		requester = new Requester();
@@ -54,16 +54,23 @@ $(function() {
 		$(canvas).add('#sw').bind('click', onClick);
 		
 		$(document).bind('onBlobsReceived', function(e) {
-			blobs = e.response;
+			entries = $(e.response).find('entry').map(function() {
+				return {
+					age: new Date($(this).find('updated').text()),
+					title: $(this).find('title').text(),
+					link: $(this).find('link').attr('href'),
+					type: $(this).find('category').attr('term')
+				};
+			});
 			
 			pointCollection = new PointCollection();
-			ages = blobs.map(function(x) { return x.age; }).sort();
-			oldest = ages[0];
-			newest = ages.reverse()[0];
-			for (var i = 0; i < blobs.length; i++) {
+			by_age = entries.sort(function(a,b) { return a.age.getTime() - b.age.getTime(); }).toArray();
+			oldest = by_age[0];
+			newest = by_age.reverse()[0];
+			for (var i = 0; i < entries.length; i++) {
 				var point = pointCollection.newPoint(Math.random()*canvasWidth, Math.random()*canvasHeight);
-				point.data = blobs[i];
-				point.originalSize = point.size = (point.data.age - oldest) / (newest - oldest) * 40 + 10;
+				point.data = entries[i];
+				point.originalSize = point.size = (point.data.age - oldest.age) / (newest.age - oldest.age) * 40 + 10;
 				palette = PALETTE[point.data.type]; //parseInt(Math.random()*PALETTE.length)]
 				point.colour = {r: palette[0], g: palette[1], b: palette[2]};//{r: parseInt(Math.random()*256), g: parseInt(Math.random()*256), b: parseInt(Math.random()*256)}; //{r: 0xDD, g: 0xC8, b: 0x37};
 			};
@@ -172,7 +179,7 @@ $(function() {
 	
 	function Requester() {
 		this.getBlobs = function() {
-			$.getJSON("data.json", function(response) { $.event.trigger({type: 'onBlobsReceived', response: response}) });
+			$.get("feed.xml", function(response) { $.event.trigger({type: 'onBlobsReceived', response: response}) });
 		};
 	};
 	
