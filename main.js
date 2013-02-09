@@ -113,8 +113,13 @@ $(function() {
 	};
 	
 	function onMove(e) {
-		if (pointCollection)
+		if (pointCollection) {
 			pointCollection.mousePos.set(e.pageX, e.pageY);
+			if(pointCollection.selectPoint(e.pageX, e.pageY))
+				canvas.css({cursor: 'pointer'});
+			else
+				canvas.css({cursor: 'default'});
+		}
 	};
 	
 	function onClick(e) {
