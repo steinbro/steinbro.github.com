@@ -345,6 +345,9 @@ $(function() {
 		this.size = 5;
 		this.velocity = new Vector(Math.random()*20-10, Math.random()*20-10);
 		
+		this.born = Date.now() - 1000 * Math.random();  // stagger breaths
+		this.breathRate = 0.002 * Math.random() + 0.001;
+		
 		this.update = function() {
 			boundary.collision(this);
 		
@@ -361,6 +364,9 @@ $(function() {
 			
 			this.velocity.x += this.acceleration.x * dt / 2;
 			this.velocity.y += this.acceleration.y * dt / 2;
+			
+			// breathing growth/shrinking is proportional to size
+			this.size = this.originalSize * (1 + 0.05 * Math.sin(this.breathRate * (Date.now() - this.born)));
 		};
 		
 		this.draw = function() {
