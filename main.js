@@ -2,6 +2,8 @@
 // https://github.com/robhawkes/twitter-canvas-10k
 
 $(function() {
+	var months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+	
 	var requester;
 	var blobs;
 	
@@ -21,7 +23,7 @@ $(function() {
 	var dt = 0.1;
 	
 	var boundary;
-	var pointCollection;
+	var pointCollection = new PointCollection();
 	
 	var firstStart = true;
 	
@@ -54,17 +56,9 @@ $(function() {
 		$(canvas).add('#sw').bind('click', onClick);
 		
 		$(document).bind('onBlobsReceived', function(e) {
-			entries = $(e.response).find('entry').map(function() {
-				return {
-					age: new Date($(this).find('updated').text()),
-					title: $(this).find('title').text(),
-					link: $(this).find('link').attr('href'),
-					type: $(this).find('category').attr('term')
-				};
-			});
+			entries = e.blobs;
 			
-			pointCollection = new PointCollection();
-			by_age = entries.sort(function(a,b) { return a.age.getTime() - b.age.getTime(); }).toArray();
+			by_age = entries.sort(function(a,b) { return a.age.getTime() - b.age.getTime(); });
 			oldest = by_age[0];
 			newest = by_age.reverse()[0];
 			for (var i = 0; i < entries.length; i++) {
@@ -74,7 +68,9 @@ $(function() {
 				palette = PALETTE[point.data.type]; //parseInt(Math.random()*PALETTE.length)]
 				point.colour = {r: palette[0], g: palette[1], b: palette[2]};//{r: parseInt(Math.random()*256), g: parseInt(Math.random()*256), b: parseInt(Math.random()*256)}; //{r: 0xDD, g: 0xC8, b: 0x37};
 			};
-			
+		});
+		
+		$(document).bind('onBlobsFinished', function(e) {
 			mask.fadeOut(600);
 		});
 		
@@ -133,11 +129,9 @@ $(function() {
 		
 		if (point) {
 			var data = point.data;
-			name.html('<a href="'+data.link+'">'+data.title+'</a>');
+			name.html('<a href="' + data.link + '">' + data.title + '</a>');
 			
-			var dateCreated = new Date(data.age);
-			dateParts = dateCreated.toDateString().split(" ");
-			meta.html(dateParts[1] + ' ' + dateParts[3]);
+			meta.html(months[data.age.getMonth()] + ' ' + data.age.getFullYear());
 			
 			blob.html(data.desc);
 			if(!data.desc) blob.html(null);
@@ -155,7 +149,7 @@ $(function() {
 			$(this).css({visibility: 'hidden', display: 'block'});
 		});
 	}
-		
+	
 	function timeout() {
 		draw();
 		update();
@@ -165,7 +159,7 @@ $(function() {
 	
 	function draw() {
 		var tmpCanvas = canvas.get(0);
-
+		
 		if (tmpCanvas.getContext == null) {
 			return; 
 		};
@@ -184,7 +178,33 @@ $(function() {
 	
 	function Requester() {
 		this.getBlobs = function() {
-			$.get("feed.xml", function(response) { $.event.trigger({type: 'onBlobsReceived', response: response}) });
+			// load SoundCloud uploads
+			$.get("https://api.soundcloud.com/users/steinbro/tracks.json?client_id=385b6fca01820f205f2685dc162a02a8", function(response) {
+				blobs = response.map(function(track) {
+					return {
+						age: new Date(track.created_at),
+						title: track.title,
+						link: track.permalink_url,
+						type: 0
+					}
+				});
+				$.event.trigger({type: 'onBlobsReceived', blobs: blobs});
+			});
+			
+			// load GitHub repositories
+			$.get("https://api.github.com/users/steinbro/repos", function(response) {
+				blobs = response.map(function(repo) {
+					return {
+						age: new Date(repo.created_at),
+						title: repo.name,
+						link: repo.homepage || repo.html_url,
+						desc: repo.description,
+						type: 1
+					};
+				});
+				$.event.trigger({type: 'onBlobsReceived', blobs: blobs });
+				$.event.trigger({type: 'onBlobsFinished' });
+			});
 		};
 	};
 	
@@ -304,6 +324,7 @@ $(function() {
 				var dd = (dx * dx) + (dy * dy);
 				var d = Math.sqrt(dd);
 				
+				// grow small points when mouse approaches
 				if (d < 100 && point.originalSize < 20) {
 					var size = point.originalSize/(d/100);
 					point.size = (size < 20) ? size : 20;
