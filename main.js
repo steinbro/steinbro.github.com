@@ -179,7 +179,7 @@ $(function() {
 	function Requester() {
 		this.getBlobs = function() {
 			// load SoundCloud uploads
-			$.get("https://api.soundcloud.com/users/steinbro/tracks.json?client_id=385b6fca01820f205f2685dc162a02a8", function(response) {
+			$.get("https://api.soundcloud.com/users/18006361/tracks.json?client_id=385b6fca01820f205f2685dc162a02a8", function(response) {
 				blobs = response.map(function(track) {
 					return {
 						age: new Date(track.created_at),
